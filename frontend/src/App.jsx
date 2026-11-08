@@ -59,13 +59,11 @@ function App() {
   }
 
   try {
-    const response = await axios.post(
-      "http://localhost:5000/sendemail",
-      {
-        msg: msg,
-        emails: emailList
-      }
-    );
+    axios.post(`${import.meta.env.VITE_API_URL}/sendemail`, {
+  msg,
+  emails: emailList
+});
+       
 
      alert(response.data.message);
   } catch (error) {
