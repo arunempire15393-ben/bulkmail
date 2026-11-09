@@ -44,34 +44,47 @@ function App() {
     setFiles((currentFiles) => currentFiles.filter((_, index) => index !== indexToRemove))
   }
 
-   const send = async () => {
-  console.log("Message:", msg);
-  console.log("Email List:", emailList);
-
+   
+const send = async () => {
   if (!msg.trim()) {
-    alert("Please enter a message");
+    alert("Please enter your message");
     return;
   }
 
   if (emailList.length === 0) {
-    alert("No email addresses found. Please upload your Excel file.");
+    alert("Please upload a file containing valid email addresses");
     return;
   }
 
-  try {
-    axios.post(`${import.meta.env.VITE_API_URL}/sendemail`, {
-  msg,
-  emails: emailList
-});
-       
+  setStatus(true);
 
-     alert(response.data.message);
+  try {
+    console.log("Message:", msg);
+    console.log("Email List:", emailList);
+
+    const res = await axios.post(
+      `${import.meta.env.VITE_API_URL}/sendemail`,
+      {
+        msg: msg,
+        emails: emailList,
+      }
+    );
+
+    console.log("Backend response:", res.data);
+    alert(res.data.message);
+
   } catch (error) {
-    console.log("Backend response:", error.response?.data);
-    console.log("Error:", error);
-    alert(error.response?.data || "Email sending failed");
+    console.error("Email Error:", error.response?.data || error.message);
+
+    alert(
+      error.response?.data?.message || "Email sending failed"
+    );
+
+  } finally {
+    setStatus(false);
   }
 };
+
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-5">
       <main className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-8">
