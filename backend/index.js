@@ -1,21 +1,22 @@
- 
+ // 1. Imports
 const express = require("express");
 const cors = require("cors");
 const nodemailer = require("nodemailer");
 const mongoose = require("mongoose");
 
+// 2. App configuration
 const app = express();
 const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
 
-// MongoDB Atlas connection
+// 3. MongoDB connection — KEEP THIS
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Atlas Connected"))
   .catch((error) => console.log("MongoDB Error:", error));
 
-// Gmail Settings Collection
+// 4. Settings model — KEEP THIS
 const settingsSchema = new mongoose.Schema({
   email: String,
   password: String
@@ -23,45 +24,46 @@ const settingsSchema = new mongoose.Schema({
 
 const Settings = mongoose.model("Settings", settingsSchema);
 
-// Email History Collection
+// 5. Email history model — KEEP THIS
 const emailSchema = new mongoose.Schema({
   emails: [String],
   message: String,
-  date: {
-    type: Date,
-    default: Date.now
-  },
+  date: { type: Date, default: Date.now },
   status: String
 });
 
- const Email = mongoose.model("Email", emailSchema, "bulkmail");
+const Email = mongoose.model("Email", emailSchema, "bulkmail");
 
-// Send Bulk Emails
+// 6. PUT THE NEW app.post("/sendemail", ...) ROUTE HERE
+
 app.post("/sendemail", async (req, res) => {
   try {
     const { msg, emails } = req.body;
 
     const recipients = Array.isArray(emails)
-      ? [...new Set(emails.map(email => String(email).trim())
-           .filter(email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))]
+      ? [...new Set(
+          emails
+            .map(email => String(email).trim())
+            .filter(email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+        )]
       : [];
 
-    if (!msg || recipients.length === 0) {
+    if (!msg?.trim() || recipients.length === 0) {
       return res.status(400).json({
+        success: false,
         message: "Message and valid emails are required"
       });
     }
 
-    // Get Gmail details from MongoDB
     const settings = await Settings.findOne();
 
     if (!settings) {
       return res.status(400).json({
+        success: false,
         message: "Gmail settings not found"
       });
     }
 
-    // Nodemailer
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -70,7 +72,7 @@ app.post("/sendemail", async (req, res) => {
       }
     });
 
-    // Send emails
+    // First, send the email
     const info = await transporter.sendMail({
       from: settings.email,
       bcc: recipients,
@@ -78,39 +80,47 @@ app.post("/sendemail", async (req, res) => {
       text: msg
     });
 
-    // Save history
-    await Email.create({
-      emails: recipients,
-      message: msg,
-      status: "sent"
-    });
+    console.log("Email sent successfully:", info.messageId);
 
-    console.log("Email sent:", info.messageId);
+    // Then, save history separately
+    try {
+      await Email.create({
+        emails: recipients,
+        message: msg,
+        status: "sent"
+      });
 
-    res.json({
+      console.log("Email history saved successfully");
+    } catch (historyError) {
+      console.error("Email sent, but history saving failed:", historyError);
+    }
+
+    // Email success should not depend on history saving
+    return res.status(200).json({
       success: true,
       message: "Emails sent successfully!",
       total: recipients.length
     });
 
   } catch (error) {
-    console.log("Email Error:", error.message);
+    console.error("Email sending error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Email sending failed"
+      message: error.message || "Email sending failed"
     });
   }
 });
 
-// Home route
+
+// 7. Root route
 app.get("/", (req, res) => {
   res.send("BulkMail server is running");
 });
 
-// Start server after database connection
+// 8. Start server
 mongoose.connection.once("open", () => {
-  app.listen(port, () => {
+  app.listen(port, "0.0.0.0", () => {
     console.log(`Server running on port ${port}`);
   });
 });
