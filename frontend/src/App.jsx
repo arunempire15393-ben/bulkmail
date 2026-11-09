@@ -45,6 +45,7 @@ function App() {
   }
 
    
+ 
 const send = async () => {
   if (!msg.trim()) {
     alert("Please enter your message");
@@ -52,16 +53,13 @@ const send = async () => {
   }
 
   if (emailList.length === 0) {
-    alert("Please upload a file containing valid email addresses");
+    alert("Please upload a file with valid emails");
     return;
   }
 
   setStatus(true);
 
   try {
-    console.log("Message:", msg);
-    console.log("Email List:", emailList);
-
     const res = await axios.post(
       `${import.meta.env.VITE_API_URL}/sendemail`,
       {
@@ -70,20 +68,19 @@ const send = async () => {
       }
     );
 
-    console.log("Backend response:", res.data);
     alert(res.data.message);
+    setMsg('');
 
   } catch (error) {
     console.error("Email Error:", error.response?.data || error.message);
 
-    alert(
-      error.response?.data?.message || "Email sending failed"
-    );
+    alert(error.response?.data?.message || "Email sending failed");
 
   } finally {
     setStatus(false);
   }
 };
+
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-5">
